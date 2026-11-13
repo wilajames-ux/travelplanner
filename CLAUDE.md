@@ -11,7 +11,7 @@ Itinerary by city and day (arrive/leave, address, map link, video, website, phot
 - `S.cities[]` {name,url,days,mv}  (`mv` = travel details INTO that city from the previous one)
 - `S.it[][]` stops per global day; `S.dl[]` city index per day; `S.dm[]` per-day {name,date}. Keep all three in sync on every splice/push/reorder.
 - Stop fields: id,time,out,link,addr,imgs,video,web,cost,cat,note,name,emoji,tm,tl,lock,m,r. Kind comes from `ALL[id].k` (stop|stay|travel), custom items made by `mkCustom(kind)` and stored in `S.custom` then `reg()`.
-- `S.draft[]` (items may have `.bucket`), `S.buckets[]`, `S.polls[]`, `S.grp`, `S.budget` {cur,cats,targets,fx:{on,sym,rate}}, `S.resources[]`, `S.clip`, `S.cover`, `S.tripMap`, `S.album`, `S.start`, `S.name`.
+- `S.draft[]` (items may have `.bucket` and `.cat`, the budget category carried over by Add to and Copy/Paste), `S.buckets[]`, `S.polls[]`, `S.grp`, `S.budget` {cur,cats,targets,fx:{on,sym,rate}}, `S.resources[]`, `S.clip`, `S.cover`, `S.tripMap`, `S.album`, `S.start`, `S.name`.
 
 ## Vercel groups (api/)
 `api/_lib.js` (helpers; underscore = not a route), `api/session.js` (GET who am I / POST sign in / DELETE sign out), `api/trip.js` (GET/PUT the group's trip, compare-and-set on a version number, 409 on conflict), `api/admin.js` (list/save/delete groups with `ADMIN_CODE`). Storage is Upstash Redis over REST via fetch (env `KV_REST_API_URL`/`KV_REST_API_TOKEN`), no npm dependencies. Keys: `g:<name>` group (salted scrypt hashes of the two codes), `t:<name>` trip JSON, `v:<name>` version, `groups` set, `rl:*` rate limits. Session is an HMAC-signed HttpOnly cookie `tb_session` {g,r,exp}.
@@ -22,6 +22,9 @@ Local test: `node` server that serves `index.html`, runs `api/*.js` with `res.st
 Features are appended as blocks near the end of the script, before the final `render();`. Later blocks override earlier functions by reassigning (`render`, `nav`, `itemRow`, `draft`, `budgetView`, `openPV`, `pvBody`, `money`, `parseAmount`...), and wrappers chain (`const _r=render; render=function(){_r(); ...}`). Several old versions of functions remain as dead code, so grep for ALL copies before editing and check which one is active (the last one wins). Declare overridable things with `function` or `let`, not `const`.
 Events use document-level delegated listeners keyed on data-* attributes; capture-phase listeners intercept others with `stopPropagation`. The UI re-renders by replacing `#main` innerHTML, so focus is lost unless restored.
 CSS goes in the FIRST `</style>` (the head). Beware: later `</style>` strings sit inside JS template strings, and inserting there silently breaks styling.
+
+## Prices
+`costText(raw)` renders a price for stop and Draft summaries: the typed text, plus the other currency when Two currencies is on ("¥60 · $8.33"; a bare number gets the main symbol). Budget tab uses `money()`, print uses `pvFmt()`; both already show both currencies. `goStop(gi,i)` opens the Itinerary at a stop and flashes it; `toastGo()` is a toast with a "Click here to view it" link to it.
 
 ## Layout gotchas
 Phone layout (<=600px) lives in the "Phone layout" block appended just before the groups block, so it overrides earlier injected styles (an older 600px rule in the head is overridden by later `.slot` rules and does nothing). On phones city/day headers are not sticky, stops stack (times row, then 64px photo + body) and the AI tab reads "AI" (`.lg` span hidden).
