@@ -24,6 +24,7 @@ Events use document-level delegated listeners keyed on data-* attributes; captur
 CSS goes in the FIRST `</style>` (the head). Beware: later `</style>` strings sit inside JS template strings, and inserting there silently breaks styling.
 
 ## Layout gotchas
+Phone layout (<=600px) lives in the "Phone layout" block appended just before the groups block, so it overrides earlier injected styles (an older 600px rule in the head is overridden by later `.slot` rules and does nothing). On phones city/day headers are not sticky, stops stack (times row, then 64px photo + body) and the AI tab reads "AI" (`.lg` span hidden).
 Width via `--Wt` (90vw) / `--W`; `layoutToc()` positions the `#toc` sidebar from measured elements; `freeWidth()` forces max-width. Sticky offsets use `--hh` and `--ch`.
 
 ## Testing

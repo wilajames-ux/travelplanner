@@ -667,7 +667,7 @@ h2.city::before{content:"";display:none}
 .meta{color:var(--mut)}
 @media print{header,.hero2{display:none!important}main{margin-left:0!important}main>*{max-width:none!important}.tcard{box-shadow:none;margin:0!important;padding:0!important;width:auto}}
 `;document.head.appendChild(st)})();
-nav=function(){const t=[["chat","\u2728 AI Assistant"],["plan","Itinerary"],["budget","Budget"],["draft","Draft"],["vote","Vote"]];document.getElementById("nav").innerHTML=t.map(([k,l])=>`<button class="${(k==="chat"?"ai ":"")}${view===k||(k==="plan"&&view==="itin")?"on":""}" data-view="${k}">${l}</button>`).join("")};
+nav=function(){const t=[["chat","\u2728 AI<span class=\"lg\"> Assistant</span>"],["plan","Itinerary"],["budget","Budget"],["draft","Draft"],["vote","Vote"]];document.getElementById("nav").innerHTML=t.map(([k,l])=>`<button class="${(k==="chat"?"ai ":"")}${view===k||(k==="plan"&&view==="itin")?"on":""}" data-view="${k}">${l}</button>`).join("")};
 const _dec2=decorate;
 decorate=function(){_dec2();const h1=document.querySelector("#main h1.trip");if(!h1||h1.closest(".tcard"))return;const par=h1.parentNode,hero=document.createElement("div"),card=document.createElement("div");hero.className="hero2 noprint";card.className="tcard";par.insertBefore(hero,h1);par.insertBefore(card,h1);let n=h1;while(n&&!(n.classList&&n.classList.contains("leg"))){const nx=n.nextElementSibling;card.appendChild(n);n=nx}};
 /* ---- Top banner menu and dark mode ---- */
@@ -953,6 +953,42 @@ document.addEventListener("click",e=>{const t=e.target;if(t.closest&&t.closest("
 document.addEventListener("click",e=>{const t=e.target;if(!t.closest)return;const b=t.closest(sel);if(!b)return;const bk=b.closest("[data-bucket]");snap={n:S.draft.length,b:bk?bk.dataset.bucket:""}},true);
 document.addEventListener("click",e=>{if(!snap)return;const sn=snap;snap=null;if(S.draft.length===sn.n+1){const it=S.draft[sn.n];if(sn.b)it.bucket=sn.b;openDet.add("d|"+sn.n);save();render()}})})();
 
+/* ---- Phone layout (<=600px). Appended last so it wins over earlier injected styles. ---- */
+(function(){const st=document.createElement("style");st.textContent=`@media(max-width:600px){
+html,body{overflow-x:hidden}
+input:not(.hin),select,textarea{font-size:16px!important}
+header{padding:8px 12px!important;gap:6px 8px!important;min-height:0!important}
+header nav{gap:4px!important;scrollbar-width:none}header nav::-webkit-scrollbar{display:none}
+header nav button{padding:8px 12px!important;font-size:15px!important}
+nav button .lg{display:none}
+#themebtn{padding:6px 12px!important;font-size:14px!important}
+main{padding-left:12px!important;padding-right:12px!important}
+h2.city,.day.panel>.bar{position:static!important}
+h2.city{margin:18px 0 6px!important}
+.day.panel{padding:6px 0 10px!important;border:0!important;box-shadow:none!important;background:transparent!important}
+.day.panel>.bar{flex-wrap:wrap;gap:4px}
+.day h3.dayh .hin{font-size:24px!important}
+.ic{flex-wrap:wrap}
+.day.panel>.bar .ic{margin-left:-6px}
+.slot{grid-template-columns:1fr!important;gap:10px!important;padding:12px!important}
+.slot .tm{display:grid;grid-template-rows:auto auto;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px 10px;align-items:end}
+.slot .tm .sm{margin:0}
+.card2{grid-template-columns:64px minmax(0,1fr)!important;gap:10px!important}
+.th{width:64px!important;height:64px!important}
+.th.dz b,.th.dz span:not(.dzi){display:none}.th.dz .dzi{font-size:22px}
+.line1{flex-wrap:wrap;gap:4px}
+.line1 .hin{flex:1 1 140px}
+.line1 .ic{margin-left:-6px;flex:1 1 100%}
+.line1 .ic button{padding:6px 8px;font-size:15px}
+.sum,.more,.vt,.pick{margin-left:0!important}
+.sum{gap:4px 12px}
+.chips input,.chips select{flex:1 1 100%!important;min-width:0}
+.dist{margin-left:0!important}
+.bar{gap:8px}
+#tbpill{left:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));max-width:calc(100vw - 150px);padding:5px 6px 5px 10px;font-size:12px;gap:6px}
+#tbpill .s{display:none}#tbpill .s.bad{display:inline}
+#pm .box,#tbgate .box{padding:16px}
+}`;document.head.appendChild(st)})();
 /* ---- Shared groups on Vercel: sign-in, autosave, admin. Does nothing where /api is missing (claude.ai, file://). ---- */
 (function(){
 const SV={on:false,group:"",role:"",ver:0,dirty:false,busy:false,t:null,admin:""};
