@@ -140,7 +140,7 @@ const fresh=()=>({draft:[],polls:[],clip:null,cities:[],destName:"",dest:null,st
 const rd=(k,f)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch(e){return f}};
 const wr=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){if(typeof toast==="function")toast("Storage is full. Remove some photos to keep saving.")}};
 let S=Object.assign(fresh(),rd("tp_cur",{}));let view="plan";
-const save=()=>wr("tp_cur",S);
+let save=()=>wr("tp_cur",S);
 const bg=h=>`linear-gradient(135deg,hsl(${h} 55% 42%),hsl(${(h+40)%360} 65% 58%))`;
 const hav=(a,b)=>{const R=6371,r=x=>x*Math.PI/180,dl=r(b.la-a.la),dn=r(b.lo-a.lo),x=Math.sin(dl/2)**2+Math.cos(r(a.la))*Math.cos(r(b.la))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))};
 function travel(a,b,m){const km=hav(a,b);const auto=km<1.3?"Walk":km<12?"Transit":"Taxi";const mm=m||auto;const min=Math.round(mm==="Walk"?km*12:mm==="Transit"?km*3+10:mm==="Taxi"?km*2+5:km*2+8);return{mm,min:Math.max(min,2),km}}
@@ -952,6 +952,65 @@ document.addEventListener("click",e=>{const t=e.target;if(t.closest&&t.closest("
 (function(){let snap=null;const sel="[data-fadd][data-l='d'],[data-fpaste][data-l='d']";
 document.addEventListener("click",e=>{const t=e.target;if(!t.closest)return;const b=t.closest(sel);if(!b)return;const bk=b.closest("[data-bucket]");snap={n:S.draft.length,b:bk?bk.dataset.bucket:""}},true);
 document.addEventListener("click",e=>{if(!snap)return;const sn=snap;snap=null;if(S.draft.length===sn.n+1){const it=S.draft[sn.n];if(sn.b)it.bucket=sn.b;openDet.add("d|"+sn.n);save();render()}})})();
+
+/* ---- Shared groups on Vercel: sign-in, autosave, admin. Does nothing where /api is missing (claude.ai, file://). ---- */
+(function(){
+const SV={on:false,group:"",role:"",ver:0,dirty:false,busy:false,t:null,admin:""};
+const base=save,root=document.documentElement;
+root.classList.add("tbwait");const reveal=()=>root.classList.remove("tbwait");setTimeout(reveal,4000);
+const st=document.createElement("style");st.textContent=`html.tbwait #main,html.tbwait #toc{visibility:hidden}
+#tbgate{position:fixed;inset:0;z-index:100;background:var(--bg);overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:max(8vh,24px) 16px 40px}
+#tbgate .box{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:18px;padding:22px;width:min(420px,100%);box-shadow:0 20px 60px -30px rgba(0,0,0,.45)}
+#tbgate h2{font-size:26px;margin:0 0 4px}#tbgate p{color:var(--mut);margin:0 0 14px;font-size:14px}
+#tbgate label{display:block;font-weight:600;margin:12px 0 4px}#tbgate input{width:100%}
+#tbgate .err{color:#e4572e;min-height:20px;font-size:14px;margin-top:8px}
+#tbgate .go{width:100%;margin-top:14px;padding:11px}#tbgate .lk{background:none;border:0;color:var(--mut);cursor:pointer;font:inherit;font-size:13px;text-decoration:underline;padding:0;margin-top:14px}
+#tbgate .grp{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+#tbpill{position:fixed;left:12px;bottom:12px;z-index:40;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:calc(100vw - 24px);background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:99px;padding:6px 8px 6px 14px;font-size:13px;box-shadow:0 8px 24px -14px rgba(0,0,0,.5)}
+#tbpill .s{color:var(--mut)}#tbpill .s.bad{color:#e4572e;font-weight:600}#tbpill button{background:none;border:1px solid var(--line);color:var(--ink);border-radius:99px;padding:3px 10px;font:inherit;cursor:pointer}
+@media print{#tbgate,#tbpill{display:none!important}}`;document.head.appendChild(st);
+async function j(url,opt){try{const r=await fetch(url,Object.assign({credentials:"same-origin",headers:{"Content-Type":"application/json"}},opt));let d={};try{d=await r.json()}catch(e){}return{ok:r.ok,status:r.status,d}}catch(e){return{ok:false,status:0,d:{}}}}
+function pill(state,bad){let el=document.getElementById("tbpill");if(!SV.on||!SV.group){if(el)el.remove();return}if(!el){el=document.createElement("div");el.id="tbpill";document.body.appendChild(el)}
+const ed=SV.role==="editor";el.innerHTML=`<span>${ed?"✏️":"👀"} <b>${esc(SV.group)}</b> · ${ed?"Editor":"Viewer"}</span><span class="s${bad?" bad":""}">${esc(state||(ed?"Saved ✓":"View only: changes aren’t saved"))}</span><button data-tbout>Sign out</button>`}
+function apply(data){S=Object.assign(fresh(),data||{});base();render()}
+async function pull(){const r=await j("/api/trip");if(r.status===401)return gate("You’ve been signed out. Sign in again.");if(!r.ok){pill("Couldn’t load the trip",1);toast(r.d.error||"Couldn’t reach the server.");return null}SV.ver=r.d.version;return r.d}
+async function push(force){clearTimeout(SV.t);if(SV.busy){SV.t=setTimeout(push,800);return}SV.busy=true;SV.dirty=false;pill("Saving…");
+const r=await j("/api/trip",{method:"PUT",body:JSON.stringify({data:S,version:SV.ver,force:!!force})});SV.busy=false;
+if(r.ok){SV.ver=r.d.version;if(!SV.dirty)pill();return}
+if(r.status===409){if(confirm("Another editor saved changes while you were editing.\n\nOK: load their latest version (your newest change is dropped).\nCancel: keep your version and replace theirs.")){const d=await pull();if(d)apply(d.data);pill()}else push(true);return}
+if(r.status===401)return gate("You’ve been signed out. Sign in again.");
+SV.dirty=true;pill(r.status===413?"Not saved: trip too large":"Not saved, retrying…",1);toast(r.status===413?"The trip is too large to save, usually from photos. Remove some photos.":(r.d.error||"Couldn’t reach the server. Will retry."));if(r.status!==413&&r.status!==403)SV.t=setTimeout(push,8000)}
+save=function(){base();if(SV.on&&SV.group&&SV.role==="editor"){SV.dirty=true;pill("Saving…");clearTimeout(SV.t);SV.t=setTimeout(push,1500)}};
+const hasTrip=x=>!!(x&&(x.it||(x.cities||[]).some(c=>c&&String(c.name||"").trim())||(x.draft&&x.draft.length)));
+async function enter(sess){SV.group=sess.group;SV.role=sess.role;const g=document.getElementById("tbgate");if(g)g.remove();const d=await pull();if(!d){reveal();pill("Couldn’t load the trip",1);return}
+if(d.data)apply(d.data);else if(SV.role==="editor"&&hasTrip(S)&&confirm(`"${SV.group}" has no saved trip yet.\n\nUse the trip that’s on this device as the group’s trip?`)){render();push(true)}else{apply(null);if(SV.role==="editor")push(true);else toast("Nothing has been saved to this group yet.")}
+reveal();pill()}
+function gate(msg){SV.group="";SV.role="";clearTimeout(SV.t);pill();let el=document.getElementById("tbgate");if(!el){el=document.createElement("div");el.id="tbgate";document.body.appendChild(el)}reveal();
+el.innerHTML=`<form class="box" data-tbform="in" autocomplete="on"><div class="brand" style="margin-bottom:10px">Tripboard</div><h2>Sign in to your group</h2><p>Ask the trip organiser for your group name and passcode.</p><label for="tbg">Group name</label><input id="tbg" name="group" placeholder="e.g. China Family" autocomplete="username" required><label for="tbc">Passcode</label><input id="tbc" name="code" type="password" autocomplete="current-password" required><div class="err" id="tberr">${esc(msg||"")}</div><button class="p go" type="submit">Sign in</button><button class="lk" type="button" data-tbadmin>Admin: manage groups</button></form>`;setTimeout(()=>{const i=document.getElementById("tbg");if(i)i.focus()},0)}
+function adminView(groups,msg,ok){const el=document.getElementById("tbgate");if(!el)return;
+el.innerHTML=`<div class="box"><div class="brand" style="margin-bottom:10px">Tripboard admin</div>${SV.admin?`<h2>Groups</h2><p>Each group has its own trip. Share the editor passcode with people who plan, and the viewer passcode with people who only look.</p>${groups&&groups.length?groups.map(g=>`<div class="grp"><b>${esc(g.name)}</b><span><button class="g" type="button" data-tbedit="${esc(g.name)}">Change codes</button> <button class="g" type="button" data-tbdel="${esc(g.name)}">Delete</button></span></div>`).join(""):`<p style="margin:0">No groups yet.</p>`}
+<form data-tbform="save" style="border-top:1px solid var(--line);margin-top:8px;padding-top:4px"><label for="tbn">Group name</label><input id="tbn" name="name" placeholder="China Family" required><label for="tbe">Editor passcode</label><input id="tbe" name="editor" autocomplete="off" placeholder="Leave blank to keep the current one"><label for="tbv">Viewer passcode</label><input id="tbv" name="viewer" autocomplete="off" placeholder="Leave blank to keep the current one"><div class="err" id="tberr" style="${ok?"color:#2e9e6b":""}">${esc(msg||"")}</div><button class="p go" type="submit">Save group</button></form>`
+:`<h2>Manage groups</h2><p>Enter the admin passcode (ADMIN_CODE in Vercel).</p><form data-tbform="admin"><label for="tba">Admin passcode</label><input id="tba" name="admin" type="password" autocomplete="off" required><div class="err" id="tberr">${esc(msg||"")}</div><button class="p go" type="submit">Continue</button></form>`}<button class="lk" type="button" data-tbback>← Back to sign in</button></div>`;
+const f=el.querySelector("input");if(f)f.focus()}
+async function admin(body){return j("/api/admin",{method:"POST",body:JSON.stringify(Object.assign({adminCode:SV.admin},body))})}
+async function adminList(msg,ok){const r=await admin({action:"list"});if(!r.ok){const m=r.d.error||"Couldn’t reach the server.";SV.admin="";adminView(null,m);return}adminView(r.d.groups,msg,ok)}
+const err=m=>{const e=document.getElementById("tberr");if(e){e.style.color="";e.textContent=m}};
+document.addEventListener("submit",async e=>{const f=e.target.closest&&e.target.closest("[data-tbform]");if(!f)return;e.preventDefault();const v=n=>(f.elements[n]||{value:""}).value,btn=f.querySelector("button[type=submit]");if(btn)btn.disabled=true;
+try{const k=f.dataset.tbform;
+if(k==="in"){err("");const r=await j("/api/session",{method:"POST",body:JSON.stringify({group:v("group"),code:v("code")})});if(r.ok)await enter(r.d);else err(r.d.error||"Couldn’t reach the server.")}
+else if(k==="admin"){SV.admin=v("admin");await adminList()}
+else if(k==="save"){const r=await admin({action:"save",name:v("name"),editor:v("editor"),viewer:v("viewer")});if(r.ok)await adminList((r.d.created?"Created ":"Updated ")+r.d.name+".",1);else err(r.d.error||"Couldn’t save.")}}
+finally{if(btn&&btn.isConnected)btn.disabled=false}},true);
+document.addEventListener("click",async e=>{const t=e.target;if(!t.closest)return;let b;
+if(t.closest("[data-tbout]")){e.stopPropagation();if(SV.dirty&&SV.role==="editor")await push();await j("/api/session",{method:"DELETE"});gate();return}
+if(t.closest("[data-tbadmin]")){e.stopPropagation();adminView();return}
+if(t.closest("[data-tbback]")){e.stopPropagation();SV.admin="";gate();return}
+if(b=t.closest("[data-tbedit]")){e.stopPropagation();const n=document.getElementById("tbn");if(n){n.value=b.dataset.tbedit;document.getElementById("tbe").focus()}return}
+if(b=t.closest("[data-tbdel]")){e.stopPropagation();const n=b.dataset.tbdel;if(!confirm(`Delete "${n}" and its saved trip? This can’t be undone.`))return;const r=await admin({action:"delete",name:n});if(r.ok)adminList("Deleted "+n+".",1);else err(r.d.error||"Couldn’t delete.")}},true);
+document.addEventListener("visibilitychange",async()=>{if(document.visibilityState!=="visible"||!SV.group||SV.dirty||SV.busy)return;const v=SV.ver,d=await pull();if(d&&d.version!==v&&!SV.dirty&&d.data)apply(d.data)});
+window.addEventListener("beforeunload",e=>{if(SV.dirty&&SV.role==="editor"){push();e.preventDefault();e.returnValue=""}});
+(async()=>{if(!/^https?:$/.test(location.protocol)){reveal();return}const r=await j("/api/session");if(!r.ok||!r.d||r.d.server!==true){reveal();return}SV.on=true;if(r.d.group)await enter(r.d);else gate()})();
+})();
 
 render();
 </script>
