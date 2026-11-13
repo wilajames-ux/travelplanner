@@ -971,6 +971,28 @@ function toastGo(msg,gi,i){toast(msg);const t=document.getElementById("toast");i
 const _adt=addDraftTo;
 addDraftTo=function(it,gi){const day=S.it&&S.it[gi];if(!it||!day)return _adt(it,gi);const n=day.length;_adt(it,gi);if(day.length!==n+1)return;const x=day[n];if(it.cat&&bud().cats.includes(it.cat)){x.cat=it.cat;save()}
 const lab=(dayLabels().find(q=>q[0]===gi)||[0,"the day"])[1];toastGo("Added to "+lab+".",gi,n)};
+/* ---- Draft: "+ Add a new city" / "+ Add a day" inside the Add to (City, Day) dropdowns ---- */
+let newCityFor=null;
+const _irNew=itemRow;
+itemRow=function(it,i,l){let h=_irNew(it,i,l);if(l!=="d"||!S.it)return h;const ps=pickDest[it.id]||{};
+if(newCityFor===it.id)return h.replace(/<select data-pdc[^>]*>[\s\S]*?<\/select>/,`<input data-pdnewcity data-i="${i}" placeholder="New city name" aria-label="New city name" style="flex:1 1 140px"><button class="p" data-pdnewok data-i="${i}">Add city</button><button class="g" data-pdnewx>Cancel</button>`);
+h=h.replace(/(<select data-pdc[^>]*>[\s\S]*?)(<\/select>)/,`$1<option value="__new">+ Add a new city…</option>$2`);
+if(ps.ci!=null&&S.cities[ps.ci]){const nm=esc(S.cities[ps.ci].name||"this city");h=h.replace(/(<select data-pdd[^>]*>[\s\S]*?)(<\/select>)/,(m,a,b)=>a+`<option value="__new">+ Add a day in ${nm}</option>`+b)}
+return h};
+/* Insert a day at the end of city ci (same as the Itinerary's "+ Add a day in ..."); returns its global index. */
+function draftAddDay(ci){fixLegs();const pos=S.dl.filter(v=>v<=ci).length;S.it.splice(pos,0,[]);S.dl.splice(pos,0,ci);S.dm.splice(pos,0,{});
+Object.values(pickDest).forEach(p=>{if(p.gi!=null&&p.gi>=pos)p.gi++});return pos}
+function draftAddCity(i){const it=S.draft[i],inp=document.querySelector("[data-pdnewcity]"),name=inp?inp.value.trim():"";if(!it)return;if(!name){if(inp){inp.focus();inp.style.borderColor="#e4572e"}return}
+fixLegs();S.cities.push({name,url:"",days:1,mv:{}});S.it.push([]);S.dl.push(S.cities.length-1);S.dm.push({});
+pickDest[it.id]={ci:S.cities.length-1,gi:S.it.length-1};newCityFor=null;save();render();toast("Added "+name+" to the itinerary with one day.")}
+document.addEventListener("change",e=>{const t=e.target;if(!t.matches||t.value!=="__new")return;
+if(t.matches("select[data-pdc]")){e.stopImmediatePropagation();const it=S.draft[+t.dataset.i];if(!it)return;newCityFor=it.id;render();const n=document.querySelector("[data-pdnewcity]");if(n)n.focus();return}
+if(t.matches("select[data-pdd]")){e.stopImmediatePropagation();const it=S.draft[+t.dataset.i],ps=it&&pickDest[it.id];if(!ps||ps.ci==null)return;ps.gi=draftAddDay(ps.ci);save();render();
+const lab=(dayLabels().find(q=>q[0]===ps.gi)||[0,"a new day"])[1];toast("Added "+lab+" to the itinerary.")}},true);
+document.addEventListener("click",e=>{const t=e.target;if(!t.closest)return;let b;
+if(b=t.closest("[data-pdnewok]")){e.stopPropagation();draftAddCity(+b.dataset.i);return}
+if(t.closest("[data-pdnewx]")){e.stopPropagation();newCityFor=null;render()}},true);
+document.addEventListener("keydown",e=>{const t=e.target;if(!t.matches)return;if(t.matches("[data-pdnewcity]")){if(e.key==="Enter"){e.preventDefault();draftAddCity(+t.dataset.i)}else if(e.key==="Escape"){newCityFor=null;render()}}},true);
 /* ---- Phone layout (<=600px). Appended last so it wins over earlier injected styles. ---- */
 (function(){const st=document.createElement("style");st.textContent=`@media(max-width:600px){
 html,body{overflow-x:hidden}
